@@ -214,7 +214,7 @@ class Train:
 
                     # output = transform_inv(output)
                     output = transform_ts2np(output)
-                    output = 1*(output > 0.5)
+                    output = 1.0 * (output > 0.5)
 
                     writer_train.add_images('input', input, num_batch_train * (epoch - 1) + i, dataformats='NHWC')
                     writer_train.add_images('output', output, num_batch_train * (epoch - 1) + i, dataformats='NHWC')
@@ -252,7 +252,7 @@ class Train:
 
                         # output = transform_inv(output)
                         output = transform_ts2np(output)
-                        output = 1 * (output > 0.5)
+                        output = 1.0 * (output > 0.5)
 
                         writer_val.add_images('input', input, num_batch_val * (epoch - 1) + i, dataformats='NHWC')
                         writer_val.add_images('output', output, num_batch_val * (epoch - 1) + i, dataformats='NHWC')
@@ -349,7 +349,7 @@ class Train:
 
                 # output = transform_inv(output)
                 output = transform_ts2np(output)
-                output = 1*(output > 0.5)
+                output = 1.0 * (output > 0.5)
 
                 for j in range(label.shape[0]):
                     name = batch_size * (i - 1) + j
