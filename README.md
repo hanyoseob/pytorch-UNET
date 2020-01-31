@@ -127,17 +127,17 @@ After the above comment executes, go **http://localhost:6006**
     +---datasets
     |   \---em
     |       +---test
-    |       |   +---1.npy
+    |       |   +---0.npy
     |       |   |   ...
-    |       |   \---5.npy
+    |       |   \---4.npy
     |       +---train
-    |       |   +---1.npy
+    |       |   +---0.npy
     |       |   |   ...
-    |       |   \---30.npy
+    |       |   \---29.npy
     |       \---val
-    |           +---1.npy
+    |           +---0.npy
     |           |   ...
-    |           \---5.npy
+    |           \---4.npy
     +---log
     |   \---unet
     |       \---em
