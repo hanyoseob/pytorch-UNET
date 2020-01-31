@@ -16,14 +16,14 @@ There is large consent that successful training of deep networks requires many t
                      --name_data [data name] \
                      --dir_data [data directory] \
                      --dir_log [log directory] \
-                     --dir_checkpoint [checkpoint directory] \
+                     --dir_checkpoint [checkpoint directory]
 ---
     $ python main.py --mode train \
                      --scope unet \
                      --name_data em \
                      --dir_data ./datasets \
                      --dir_log ./log \
-                     --dir_checkpoint ./checkpoint \
+                     --dir_checkpoint ./checkpoint
 
 * Set **[scope name]** uniquely.
 * To understand hierarchy of directories based on their arguments, see **directories structure** below. 
