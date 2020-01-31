@@ -286,6 +286,11 @@ class Train:
 
         name_data = self.name_data
 
+        if nch_out == 1:
+            cmap = 'gray'
+        else:
+            cmap = None
+
         ## setup dataset
         dir_chck = os.path.join(self.dir_checkpoint, self.scope, name_data)
 
@@ -353,9 +358,9 @@ class Train:
                                'output': "%04d-output.png" % name,
                                'label': "%04d-label.png" % name}
 
-                    plt.imsave(os.path.join(dir_result_save, fileset['input']), input[j, :, :, :].squeeze())
-                    plt.imsave(os.path.join(dir_result_save, fileset['output']), output[j, :, :, :].squeeze())
-                    plt.imsave(os.path.join(dir_result_save, fileset['label']), label[j, :, :, :].squeeze())
+                    plt.imsave(os.path.join(dir_result_save, fileset['input']), input[j, :, :, :].squeeze(), cmap=cmap)
+                    plt.imsave(os.path.join(dir_result_save, fileset['output']), output[j, :, :, :].squeeze(), cmap=cmap)
+                    plt.imsave(os.path.join(dir_result_save, fileset['label']), label[j, :, :, :].squeeze(), cmap=cmap)
 
                     append_index(dir_result, fileset)
 
