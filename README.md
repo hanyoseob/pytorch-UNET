@@ -123,7 +123,7 @@ After the above comment executes, go **http://localhost:6006**
     |       \---em
     |           +---model_epoch0000.pth
     |           |   ...
-    |           \---model_epoch0200.pth
+    |           \---model_epoch0300.pth
     +---datasets
     |   \---em
     |       +---test
