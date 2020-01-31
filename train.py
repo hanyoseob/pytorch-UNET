@@ -144,9 +144,8 @@ class Train:
         dataset_train = Dataset(dir_data_train, data_type=self.data_type, nch=self.nch_in, transform=transform_train)
         dataset_val = Dataset(dir_data_val, data_type=self.data_type, nch=self.nch_in, transform=transform_val)
 
-        loader_train = torch.utils.data.DataLoader(dataset_train, batch_size=batch_size, shuffle=True, num_workers=0)
-        loader_val = torch.utils.data.DataLoader(dataset_val, batch_size=batch_size, shuffle=True, num_workers=0)
-        # loader_val = torch.utils.data.DataLoader(dataset_val, batch_size=batch_size, shuffle=False, num_workers=0)
+        loader_train = torch.utils.data.DataLoader(dataset_train, batch_size=batch_size, shuffle=True, num_workers=8)
+        loader_val = torch.utils.data.DataLoader(dataset_val, batch_size=batch_size, shuffle=True, num_workers=8)
 
         num_train = len(dataset_train)
         num_val = len(dataset_val)
@@ -211,9 +210,11 @@ class Train:
                 if should(num_freq_disp):
                     ## show output
                     input = transform_inv(input)
+                    label = transform_ts2np(label)
+
                     # output = transform_inv(output)
                     output = transform_ts2np(output)
-                    label = transform_ts2np(label)
+                    output = 1*(output > 0.5)
 
                     writer_train.add_images('input', input, num_batch_train * (epoch - 1) + i, dataformats='NHWC')
                     writer_train.add_images('output', output, num_batch_train * (epoch - 1) + i, dataformats='NHWC')
@@ -247,9 +248,11 @@ class Train:
                     if should(num_freq_disp):
                         ## show output
                         input = transform_inv(input)
+                        label = transform_ts2np(label)
+
                         # output = transform_inv(output)
                         output = transform_ts2np(output)
-                        label = transform_ts2np(label)
+                        output = 1 * (output > 0.5)
 
                         writer_val.add_images('input', input, num_batch_val * (epoch - 1) + i, dataformats='NHWC')
                         writer_val.add_images('output', output, num_batch_val * (epoch - 1) + i, dataformats='NHWC')
@@ -299,7 +302,7 @@ class Train:
 
         dataset_test = Dataset(dir_data_test, data_type=self.data_type, nch=self.nch_in, transform=transform_test)
 
-        loader_test = torch.utils.data.DataLoader(dataset_test, batch_size=batch_size, shuffle=False, num_workers=-1)
+        loader_test = torch.utils.data.DataLoader(dataset_test, batch_size=batch_size, shuffle=False, num_workers=8)
 
         num_test = len(dataset_test)
 
@@ -327,8 +330,8 @@ class Train:
             loss_G_cls_test = []
 
             for i, data in enumerate(loader_test, 1):
-                input = data['dataA'].to(device)
-                label = data['dataB'].to(device)
+                input = data['input'].to(device)
+                label = data['label'].to(device)
 
                 output = netG(input)
 
@@ -337,9 +340,11 @@ class Train:
                 loss_G_cls_test += [loss_G_cls.item()]
 
                 input = transform_inv(input)
+                label = transform_ts2np(label)
+
                 # output = transform_inv(output)
                 output = transform_ts2np(output)
-                label = transform_ts2np(label)
+                output = 1*(output > 0.5)
 
                 for j in range(label.shape[0]):
                     name = batch_size * (i - 1) + j
