@@ -74,6 +74,7 @@ class Train:
             epoch = 0
             if mode == 'train':
                 return netG, optimG, epoch
+
             elif mode == 'test':
                 return netG, epoch
 
@@ -96,19 +97,6 @@ class Train:
             netG.load_state_dict(dict_net['netG'])
 
             return netG, epoch
-
-    def preprocess(self, data):
-        normalize = Normalize()
-        randflip = RandomFlip()
-        rescale = Rescale((self.ny_load, self.nx_load))
-        randomcrop = RandomCrop((self.ny_out, self.nx_out))
-        totensor = ToTensor()
-        return totensor(randomcrop(rescale(randflip(normalize(data)))))
-
-    def deprocess(self, data):
-        tonumpy = ToNumpy()
-        denomalize = Denomalize()
-        return denomalize(tonumpy(data))
 
     def train(self):
         mode = self.mode
@@ -133,8 +121,20 @@ class Train:
         num_freq_disp = self.num_freq_disp
         num_freq_save = self.num_freq_save
 
+        cmap = 'gray' if nch_out == 1 else None
+
         ## setup dataset
         dir_chck = os.path.join(self.dir_checkpoint, self.scope, name_data)
+
+
+        dir_result_train = os.path.join(self.dir_result, self.scope, name_data, 'train')
+        if not os.path.exists(os.path.join(dir_result_train, 'images')):
+            os.makedirs(os.path.join(dir_result_train, 'images'))
+
+        dir_result_val = os.path.join(self.dir_result, self.scope, name_data, 'val')
+        if not os.path.exists(os.path.join(dir_result_val, 'images')):
+            os.makedirs(os.path.join(dir_result_val, 'images'))
+
 
         dir_data_train = os.path.join(self.dir_data, name_data, 'train')
         dir_data_val = os.path.join(self.dir_data, name_data, 'val')
@@ -142,11 +142,12 @@ class Train:
         dir_log_train = os.path.join(self.dir_log, self.scope, name_data, 'train')
         dir_log_val = os.path.join(self.dir_log, self.scope, name_data, 'val')
 
-        # transform_train = transforms.Compose([Normalize(), RandomFlip(), RandomCrop((self.ny_in, self.nx_in)), ToTensor()])
-        # transform_val = transforms.Compose([Normalize(), RandomFlip(), RandomCrop((self.ny_in, self.nx_in)), ToTensor()])
-        transform_train = transforms.Compose([Normalize(), RandomFlip(), UnifromSample((2, 2)), ToTensor()])
-        transform_val = transforms.Compose([Normalize(), RandomFlip(), UnifromSample((2, 2)), ToTensor()])
-        # transform_val = transforms.Compose([Normalize(), ToTensor()])
+
+        transform_train = transforms.Compose([RandomCrop((self.ny_load, self.nx_load)), Normalize(), RandomFlip(), ToTensor()])
+        transform_val = transforms.Compose([RandomCrop((self.ny_load, self.nx_load)), Normalize(), RandomFlip(), ToTensor()])
+
+        # transform_train = transforms.Compose([Normalize(), RandomFlip(), ToTensor()])
+        # transform_val = transforms.Compose([Normalize(), RandomFlip(), ToTensor()])
 
         transform_inv = transforms.Compose([ToNumpy(), Denomalize()])
         transform_ts2np = ToNumpy()
@@ -154,8 +155,8 @@ class Train:
         dataset_train = Dataset(dir_data_train, data_type=self.data_type, nch=self.nch_in, transform=transform_train)
         dataset_val = Dataset(dir_data_val, data_type=self.data_type, nch=self.nch_in, transform=transform_val)
 
-        loader_train = torch.utils.data.DataLoader(dataset_train, batch_size=batch_size, shuffle=True, num_workers=0)
-        loader_val = torch.utils.data.DataLoader(dataset_val, batch_size=batch_size, shuffle=True, num_workers=0)
+        loader_train = torch.utils.data.DataLoader(dataset_train, batch_size=batch_size, shuffle=True, num_workers=8)
+        loader_val = torch.utils.data.DataLoader(dataset_val, batch_size=batch_size, shuffle=True, num_workers=8)
 
         num_train = len(dataset_train)
         num_val = len(dataset_val)
@@ -165,6 +166,7 @@ class Train:
 
         ## setup network
         netG = UNet(nch_in, nch_out, nch_ker, norm)
+        # netG = CNP(nch_in, nch_out, nch_ker, norm)
 
         init_net(netG, init_type='normal', init_gain=0.02, gpu_ids=gpu_ids)
 
@@ -172,15 +174,15 @@ class Train:
         # fn_L1 = nn.L1Loss().to(device)      # Regression loss: L1
         # fn_L2 = nn.MSELoss().to(device)     # Regression loss: L2
 
-        fn_CLS = nn.BCELoss().to(device)
+        # fn_CLS = nn.BCELoss().to(device)
         # fn_CLS = nn.NLLLoss().to(device)
 
-        # fn_CLS = nn.BCEWithLogitsLoss().to(device)    # Binary-class: This loss combines a `Sigmoid` layer and the `BCELoss` in one single class.
+        fn_CLS = nn.BCEWithLogitsLoss().to(device)    # Binary-class: This loss combines a `Sigmoid` layer and the `BCELoss` in one single class.
         # fn_CLS = nn.CrossEntropyLoss().to(device)     # Multi-class: This criterion combines :func:`nn.LogSoftmax` and :func:`nn.NLLLoss` in one single class.
 
         paramsG = netG.parameters()
 
-        optimG = torch.optim.Adam(paramsG, lr=lr_G, betas=(self.beta1, 0.999))
+        optimG = torch.optim.Adam(paramsG, lr=lr_G)
 
         ## load from checkpoints
         st_epoch = 0
@@ -226,14 +228,23 @@ class Train:
                     ## show output
                     input = transform_inv(input)
                     label = transform_ts2np(label)
-
-                    # output = transform_inv(output)
-                    output = transform_ts2np(output)
+                    output = transform_ts2np(torch.sigmoid(output))
                     output = 1.0 * (output > 0.5)
 
-                    writer_train.add_images('input', input, num_batch_train * (epoch - 1) + i, dataformats='NHWC')
-                    writer_train.add_images('output', output, num_batch_train * (epoch - 1) + i, dataformats='NHWC')
-                    writer_train.add_images('label', label, num_batch_train * (epoch - 1) + i, dataformats='NHWC')
+                    # writer_train.add_images('input', input, num_batch_train * (epoch - 1) + i, dataformats='NHWC')
+                    # writer_train.add_images('output', output, num_batch_train * (epoch - 1) + i, dataformats='NHWC')
+                    # writer_train.add_images('label', label, num_batch_train * (epoch - 1) + i, dataformats='NHWC')
+
+                    name = num_train * (epoch - 1) + num_batch_train * (i - 1)
+
+                    fileset = {'name': name,
+                               'input': "%06d-input.png" % name,
+                               'label': "%06d-label.png" % name,
+                               'output': "%06d-output.png" % name}
+
+                    plt.imsave(os.path.join(dir_result_train, 'images', fileset['input']), input[0].squeeze(), cmap=cmap)
+                    plt.imsave(os.path.join(dir_result_train, 'images', fileset['label']), label[0].squeeze(), cmap=cmap)
+                    plt.imsave(os.path.join(dir_result_train, 'images', fileset['output']), output[0].squeeze(), cmap=cmap)
 
             writer_train.add_scalar('loss_G_cls', mean(loss_G_cls_train), epoch)
 
@@ -264,14 +275,24 @@ class Train:
                         ## show output
                         input = transform_inv(input)
                         label = transform_ts2np(label)
-
-                        # output = transform_inv(output)
-                        output = transform_ts2np(output)
+                        output = transform_ts2np(torch.sigmoid(output))
                         output = 1.0 * (output > 0.5)
 
-                        writer_val.add_images('input', input, num_batch_val * (epoch - 1) + i, dataformats='NHWC')
-                        writer_val.add_images('output', output, num_batch_val * (epoch - 1) + i, dataformats='NHWC')
-                        writer_val.add_images('label', label, num_batch_val * (epoch - 1) + i, dataformats='NHWC')
+                        # writer_val.add_images('input', input, num_batch_val * (epoch - 1) + i, dataformats='NHWC')
+                        # writer_val.add_images('output', output, num_batch_val * (epoch - 1) + i, dataformats='NHWC')
+                        # writer_val.add_images('label', label, num_batch_val * (epoch - 1) + i, dataformats='NHWC')
+
+                        name = num_val * (epoch - 1) + num_batch_val * (i - 1)
+
+                        fileset = {'name': name,
+                                   'input': "%06d-input.png" % name,
+                                   'label': "%06d-label.png" % name,
+                                   'output': "%06d-output.png" % name}
+
+                        plt.imsave(os.path.join(dir_result_val, 'images', fileset['input']), input[0].squeeze(), cmap=cmap)
+                        plt.imsave(os.path.join(dir_result_val, 'images', fileset['label']), label[0].squeeze(), cmap=cmap)
+                        plt.imsave(os.path.join(dir_result_val, 'images', fileset['output']), output[0].squeeze(), cmap=cmap)
+
 
                 writer_val.add_scalar('loss_G_cls', mean(loss_G_cls_val), epoch)
 
@@ -301,10 +322,7 @@ class Train:
 
         name_data = self.name_data
 
-        if nch_out == 1:
-            cmap = 'gray'
-        else:
-            cmap = None
+        cmap = 'gray' if nch_out == 1 else None
 
         ## setup dataset
         dir_chck = os.path.join(self.dir_checkpoint, self.scope, name_data)
@@ -322,7 +340,7 @@ class Train:
 
         dataset_test = Dataset(dir_data_test, data_type=self.data_type, nch=self.nch_in, transform=transform_test)
 
-        loader_test = torch.utils.data.DataLoader(dataset_test, batch_size=batch_size, shuffle=False, num_workers=0)
+        loader_test = torch.utils.data.DataLoader(dataset_test, batch_size=batch_size, shuffle=False, num_workers=8)
 
         num_test = len(dataset_test)
 
@@ -330,12 +348,15 @@ class Train:
 
         ## setup network
         netG = UNet(nch_in, nch_out, nch_ker, norm)
+        # netG = CNP(nch_in, nch_out, nch_ker, norm)
+
         init_net(netG, init_type='normal', init_gain=0.02, gpu_ids=gpu_ids)
 
         ## setup loss & optimization
         # fn_L1 = nn.L1Loss().to(device)  # L1
-        # fn_CLS = nn.BCEWithLogitsLoss().to(device)
-        fn_CLS = nn.BCELoss().to(device)
+        # fn_CLS = nn.BCELoss().to(device)
+        fn_CLS = nn.BCEWithLogitsLoss().to(device)
+
 
         ## load from checkpoints
         st_epoch = 0
@@ -361,21 +382,20 @@ class Train:
 
                 input = transform_inv(input)
                 label = transform_ts2np(label)
-
-                # output = transform_inv(output)
-                output = transform_ts2np(output)
+                output = transform_ts2np(torch.sigmoid(output))
                 output = 1.0 * (output > 0.5)
 
                 for j in range(label.shape[0]):
                     name = batch_size * (i - 1) + j
+
                     fileset = {'name': name,
                                'input': "%04d-input.png" % name,
                                'output': "%04d-output.png" % name,
                                'label': "%04d-label.png" % name}
 
-                    plt.imsave(os.path.join(dir_result_save, fileset['input']), input[j, :, :, :].squeeze(), cmap=cmap)
-                    plt.imsave(os.path.join(dir_result_save, fileset['output']), output[j, :, :, :].squeeze(), cmap=cmap)
-                    plt.imsave(os.path.join(dir_result_save, fileset['label']), label[j, :, :, :].squeeze(), cmap=cmap)
+                    plt.imsave(os.path.join(dir_result_save, fileset['input']), input[j].squeeze(), cmap=cmap)
+                    plt.imsave(os.path.join(dir_result_save, fileset['output']), output[j].squeeze(), cmap=cmap)
+                    plt.imsave(os.path.join(dir_result_save, fileset['label']), label[j].squeeze(), cmap=cmap)
 
                     append_index(dir_result, fileset)
 

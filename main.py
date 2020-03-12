@@ -40,7 +40,7 @@ parser.add_argument('--norm', type=str, default='inorm', dest='norm')
 parser.add_argument('--name_data', type=str, default='em', dest='name_data')
 
 parser.add_argument('--num_epoch', type=int,  default=300, dest='num_epoch')
-parser.add_argument('--batch_size', type=int, default=2, dest='batch_size')
+parser.add_argument('--batch_size', type=int, default=4, dest='batch_size')
 
 parser.add_argument('--lr_G', type=float, default=1e-4, dest='lr_G')
 
@@ -51,12 +51,12 @@ parser.add_argument('--ny_in', type=int, default=512, dest='ny_in')
 parser.add_argument('--nx_in', type=int, default=512, dest='nx_in')
 parser.add_argument('--nch_in', type=int, default=1, dest='nch_in')
 
-parser.add_argument('--ny_load', type=int, default=256, dest='ny_load')
-parser.add_argument('--nx_load', type=int, default=256, dest='nx_load')
+parser.add_argument('--ny_load', type=int, default=512, dest='ny_load')
+parser.add_argument('--nx_load', type=int, default=512, dest='nx_load')
 parser.add_argument('--nch_load', type=int, default=1, dest='nch_load')
 
-parser.add_argument('--ny_out', type=int, default=256, dest='ny_out')
-parser.add_argument('--nx_out', type=int, default=256, dest='nx_out')
+parser.add_argument('--ny_out', type=int, default=512, dest='ny_out')
+parser.add_argument('--nx_out', type=int, default=512, dest='nx_out')
 parser.add_argument('--nch_out', type=int, default=1, dest='nch_out')
 
 parser.add_argument('--nch_ker', type=int, default=64, dest='nch_ker')

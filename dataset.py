@@ -169,8 +169,8 @@ class RandomCrop(object):
     h, w = input.shape[:2]
     new_h, new_w = self.output_size
 
-    top = np.random.randint(0, h - new_h)
-    left = np.random.randint(0, w - new_w)
+    top = np.random.randint(0, h - new_h) if (h - new_h) > 0 else 0
+    left = np.random.randint(0, w - new_w) if (w - new_w) > 0 else 0
 
     id_y = np.arange(top, top + new_h, 1)[:, np.newaxis].astype(np.int32)
     id_x = np.arange(left, left + new_w, 1).astype(np.int32)
