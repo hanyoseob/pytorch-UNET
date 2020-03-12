@@ -10,7 +10,7 @@ import matplotlib.pyplot as plt
 from matplotlib.pyplot import cm
 from statistics import mean
 
-
+##
 class Train:
     def __init__(self, args):
         self.mode = args.mode
@@ -70,6 +70,13 @@ class Train:
                    '%s/model_epoch%04d.pth' % (dir_chck, epoch))
 
     def load(self, dir_chck, netG, optimG=[], epoch=[], mode='train'):
+        if not os.path.exists(dir_chck):
+            epoch = 0
+            if mode == 'train':
+                return netG, optimG, epoch
+            elif mode == 'test':
+                return netG, epoch
+
         if not epoch:
             ckpt = os.listdir(dir_chck)
             ckpt.sort()
@@ -135,17 +142,20 @@ class Train:
         dir_log_train = os.path.join(self.dir_log, self.scope, name_data, 'train')
         dir_log_val = os.path.join(self.dir_log, self.scope, name_data, 'val')
 
-        transform_train = transforms.Compose([Normalize(), RandomFlip(), RandomCrop((self.ny_in, self.nx_in)), ToTensor()])
-        transform_val = transforms.Compose([Normalize(), RandomFlip(), RandomCrop((self.ny_in, self.nx_in)), ToTensor()])
+        # transform_train = transforms.Compose([Normalize(), RandomFlip(), RandomCrop((self.ny_in, self.nx_in)), ToTensor()])
+        # transform_val = transforms.Compose([Normalize(), RandomFlip(), RandomCrop((self.ny_in, self.nx_in)), ToTensor()])
+        transform_train = transforms.Compose([Normalize(), RandomFlip(), UnifromSample((2, 2)), ToTensor()])
+        transform_val = transforms.Compose([Normalize(), RandomFlip(), UnifromSample((2, 2)), ToTensor()])
         # transform_val = transforms.Compose([Normalize(), ToTensor()])
+
         transform_inv = transforms.Compose([ToNumpy(), Denomalize()])
         transform_ts2np = ToNumpy()
 
         dataset_train = Dataset(dir_data_train, data_type=self.data_type, nch=self.nch_in, transform=transform_train)
         dataset_val = Dataset(dir_data_val, data_type=self.data_type, nch=self.nch_in, transform=transform_val)
 
-        loader_train = torch.utils.data.DataLoader(dataset_train, batch_size=batch_size, shuffle=True, num_workers=8)
-        loader_val = torch.utils.data.DataLoader(dataset_val, batch_size=batch_size, shuffle=True, num_workers=8)
+        loader_train = torch.utils.data.DataLoader(dataset_train, batch_size=batch_size, shuffle=True, num_workers=0)
+        loader_val = torch.utils.data.DataLoader(dataset_val, batch_size=batch_size, shuffle=True, num_workers=0)
 
         num_train = len(dataset_train)
         num_val = len(dataset_val)
@@ -159,9 +169,14 @@ class Train:
         init_net(netG, init_type='normal', init_gain=0.02, gpu_ids=gpu_ids)
 
         ## setup loss & optimization
-        # fn_L1 = nn.L1Loss().to(device) # L1
-        # fn_CLS = nn.BCEWithLogitsLoss().to(device)
+        # fn_L1 = nn.L1Loss().to(device)      # Regression loss: L1
+        # fn_L2 = nn.MSELoss().to(device)     # Regression loss: L2
+
         fn_CLS = nn.BCELoss().to(device)
+        # fn_CLS = nn.NLLLoss().to(device)
+
+        # fn_CLS = nn.BCEWithLogitsLoss().to(device)    # Binary-class: This loss combines a `Sigmoid` layer and the `BCELoss` in one single class.
+        # fn_CLS = nn.CrossEntropyLoss().to(device)     # Multi-class: This criterion combines :func:`nn.LogSoftmax` and :func:`nn.NLLLoss` in one single class.
 
         paramsG = netG.parameters()
 
@@ -307,7 +322,7 @@ class Train:
 
         dataset_test = Dataset(dir_data_test, data_type=self.data_type, nch=self.nch_in, transform=transform_test)
 
-        loader_test = torch.utils.data.DataLoader(dataset_test, batch_size=batch_size, shuffle=False, num_workers=8)
+        loader_test = torch.utils.data.DataLoader(dataset_test, batch_size=batch_size, shuffle=False, num_workers=0)
 
         num_test = len(dataset_test)
 

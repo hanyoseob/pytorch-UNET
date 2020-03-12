@@ -172,8 +172,50 @@ class RandomCrop(object):
     top = np.random.randint(0, h - new_h)
     left = np.random.randint(0, w - new_w)
 
-    input = input[top: top + new_h, left: left + new_w]
-    label = label[top: top + new_h, left: left + new_w]
+    id_y = np.arange(top, top + new_h, 1)[:, np.newaxis].astype(np.int32)
+    id_x = np.arange(left, left + new_w, 1).astype(np.int32)
+
+    # input = input[top: top + new_h, left: left + new_w]
+    # label = label[top: top + new_h, left: left + new_w]
+
+    input = input[id_y, id_x]
+    label = label[id_y, id_x]
+
+    return {'input': input, 'label': label}
+
+
+class UnifromSample(object):
+  """Crop randomly the image in a sample
+
+  Args:
+    output_size (tuple or int): Desired output size.
+                                If int, square crop is made.
+  """
+
+  def __init__(self, stride):
+    assert isinstance(stride, (int, tuple))
+    if isinstance(stride, int):
+      self.stride = (stride, stride)
+    else:
+      assert len(stride) == 2
+      self.stride = stride
+
+  def __call__(self, data):
+    input, label = data['input'], data['label']
+
+    h, w = input.shape[:2]
+    stride_h, stride_w = self.stride
+    new_h = h//stride_h
+    new_w = w//stride_w
+
+    top = np.random.randint(0, stride_h + (h - new_h * stride_h))
+    left = np.random.randint(0, stride_w + (w - new_w * stride_w))
+
+    id_h = np.arange(top, h, stride_h)[:, np.newaxis]
+    id_w = np.arange(left, w, stride_w)
+
+    input = input[id_h, id_w]
+    label = label[id_h, id_w]
 
     return {'input': input, 'label': label}
 
