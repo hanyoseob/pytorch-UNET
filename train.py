@@ -336,7 +336,7 @@ class Train:
         dir_data_test = os.path.join(self.dir_data, name_data, 'test')
 
         transform_test = transforms.Compose([Normalize(), ToTensor()])
-        transform_inv = transforms.Compose([ToNumpy(), Denomalize()])
+        transform_inv = transforms.Compose([ToNumpy(), Denormalize()])
         transform_ts2np = ToNumpy()
 
         dataset_test = Dataset(dir_data_test, data_type=self.data_type, nch=self.nch_in, transform=transform_test)
