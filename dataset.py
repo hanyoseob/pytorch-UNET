@@ -13,11 +13,10 @@ class Dataset(torch.utils.data.Dataset):
        stuff<number>_density.pt
     """
 
-    def __init__(self, data_dir, data_type='float32', nch=3, transform=None):
+    def __init__(self, data_dir, data_type='float32', transform=None):
         self.data_dir = data_dir
         self.transform = transform
         self.data_type = data_type
-        self.nch = nch
 
         lst_data = os.listdir(data_dir)
 
@@ -77,18 +76,19 @@ class ToTensor(object):
 
 
 class Normalize(object):
+    def __init__(self, mean=0.5, std=0.5):
+        self.mean = mean
+        self.std = std
+
     def __call__(self, data):
-        # Nomalize [0, 1] => [-1, 1]
-
-        # for key, value in data:
-        #     data[key] = 2 * (value / 255) - 1
-        #
-        # return data
-
         input, label = data['input'], data['label']
-        input = 2 * input - 1
-        # dataB = 2 * dataB - 1
-        return {'input': input, 'label': label}
+
+        input = (input - self.mean) / self.std
+        # label = (label - self.mean) / self.std
+        # target = (target - self.mean) / self.std
+
+        data = {'input': input, 'label': label}
+        return data
 
 
 class RandomFlip(object):
@@ -220,6 +220,48 @@ class UnifromSample(object):
     return {'input': input, 'label': label}
 
 
+class ZeroPad(object):
+  """Rescale the image in a sample to a given size
+
+  Args:
+    output_size (tuple or int): Desired output size.
+                                If tuple, output is matched to output_size.
+                                If int, smaller of image edges is matched
+                                to output_size keeping aspect ratio the same.
+  """
+
+  def __init__(self, output_size):
+    assert isinstance(output_size, (int, tuple))
+    self.output_size = output_size
+
+  def __call__(self, data):
+    input, label, target = data['input'], data['label'], data['target']
+
+    h, w = input.shape[:2]
+
+    if isinstance(self.output_size, int):
+      if h > w:
+        new_h, new_w = self.output_size * h / w, self.output_size
+      else:
+        new_h, new_w = self.output_size, self.output_size * w / h
+    else:
+      new_h, new_w = self.output_size
+
+    new_h, new_w = int(new_h), int(new_w)
+
+    l = (new_w - w)//2
+    r = (new_w - w) - l
+
+    u = (new_h - h)//2
+    b = (new_h - h) - u
+
+    input = np.pad(input, pad_width=((u, b), (l, r), (0, 0)))
+    label = np.pad(label, pad_width=((u, b), (l, r), (0, 0)))
+    target = np.pad(target, pad_width=((u, b), (l, r), (0, 0)))
+
+    return {'input': input, 'label': label, 'target': target}
+
+
 class ToNumpy(object):
     """Convert ndarrays in sample to Tensors."""
 
@@ -240,18 +282,11 @@ class ToNumpy(object):
         # return {'input': input.detach().numpy(), 'label': label.detach().numpy()}
 
 
-class Denomalize(object):
+class Denormalize(object):
+    def __init__(self, mean=0.5, std=0.5):
+        self.mean = mean
+        self.std = std
+
     def __call__(self, data):
-        # Denomalize [-1, 1] => [0, 1]
-
-        # for key, value in data:
-        #     data[key] = (value + 1) / 2 * 255
-        #
-        # return data
-
-        return (data + 1) / 2
-
-        # input, label = data['input'], data['label']
-        # input = (input + 1) / 2 * 255
-        # label = (label + 1) / 2 * 255
-        # return {'input': input, 'label': label}
+        data = self.std * data + self.mean
+        return data

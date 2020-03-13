@@ -144,16 +144,17 @@ class Train:
 
 
         transform_train = transforms.Compose([RandomCrop((self.ny_load, self.nx_load)), Normalize(), RandomFlip(), ToTensor()])
-        transform_val = transforms.Compose([RandomCrop((self.ny_load, self.nx_load)), Normalize(), RandomFlip(), ToTensor()])
+        # transform_val = transforms.Compose([RandomCrop((self.ny_load, self.nx_load)), Normalize(), RandomFlip(), ToTensor()])
+        transform_val = transforms.Compose([Normalize(), RandomFlip(), ToTensor()])
 
         # transform_train = transforms.Compose([Normalize(), RandomFlip(), ToTensor()])
         # transform_val = transforms.Compose([Normalize(), RandomFlip(), ToTensor()])
 
-        transform_inv = transforms.Compose([ToNumpy(), Denomalize()])
+        transform_inv = transforms.Compose([ToNumpy(), Denormalize()])
         transform_ts2np = ToNumpy()
 
-        dataset_train = Dataset(dir_data_train, data_type=self.data_type, nch=self.nch_in, transform=transform_train)
-        dataset_val = Dataset(dir_data_val, data_type=self.data_type, nch=self.nch_in, transform=transform_val)
+        dataset_train = Dataset(dir_data_train, data_type=self.data_type, transform=transform_train)
+        dataset_val = Dataset(dir_data_val, data_type=self.data_type, transform=transform_val)
 
         loader_train = torch.utils.data.DataLoader(dataset_train, batch_size=batch_size, shuffle=True, num_workers=8)
         loader_val = torch.utils.data.DataLoader(dataset_val, batch_size=batch_size, shuffle=True, num_workers=8)

@@ -51,12 +51,12 @@ parser.add_argument('--ny_in', type=int, default=512, dest='ny_in')
 parser.add_argument('--nx_in', type=int, default=512, dest='nx_in')
 parser.add_argument('--nch_in', type=int, default=1, dest='nch_in')
 
-parser.add_argument('--ny_load', type=int, default=512, dest='ny_load')
-parser.add_argument('--nx_load', type=int, default=512, dest='nx_load')
+parser.add_argument('--ny_load', type=int, default=256, dest='ny_load')
+parser.add_argument('--nx_load', type=int, default=256, dest='nx_load')
 parser.add_argument('--nch_load', type=int, default=1, dest='nch_load')
 
-parser.add_argument('--ny_out', type=int, default=512, dest='ny_out')
-parser.add_argument('--nx_out', type=int, default=512, dest='nx_out')
+parser.add_argument('--ny_out', type=int, default=256, dest='ny_out')
+parser.add_argument('--nx_out', type=int, default=256, dest='nx_out')
 parser.add_argument('--nch_out', type=int, default=1, dest='nch_out')
 
 parser.add_argument('--nch_ker', type=int, default=64, dest='nch_ker')
