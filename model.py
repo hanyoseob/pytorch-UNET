@@ -64,30 +64,30 @@ class CNP(nn.Module):
         """
         self.dec5_1 = CNR2d(16 * self.nch_ker, 8 * self.nch_ker, kernel_size=3, stride=1, norm=self.norm, relu=0.0)
 
-        # self.unpool4 = UnPooling2d(pool=2, type='nearest')
+        self.unpool4 = UnPooling2d(pool=2, type='nearest')
         # self.unpool4 = UnPooling2d(pool=2, type='bilinear')
-        self.unpool4 = UnPooling2d(nch=8 * self.nch_ker, pool=2, type='conv')
+        # self.unpool4 = UnPooling2d(nch=8 * self.nch_ker, pool=2, type='conv')
 
         self.dec4_2 = CNR2d(2 * 8 * self.nch_ker, 8 * self.nch_ker, kernel_size=3, stride=1, norm=self.norm, relu=0.0)
         self.dec4_1 = CNR2d(8 * self.nch_ker,     4 * self.nch_ker, kernel_size=3, stride=1, norm=self.norm, relu=0.0)
 
-        # self.unpool3 = UnPooling2d(pool=2, type='nearest')
+        self.unpool3 = UnPooling2d(pool=2, type='nearest')
         # self.unpool3 = UnPooling2d(pool=2, type='bilinear')
-        self.unpool3 = UnPooling2d(nch=4 * self.nch_ker, pool=2, type='conv')
+        # self.unpool3 = UnPooling2d(nch=4 * self.nch_ker, pool=2, type='conv')
 
         self.dec3_2 = CNR2d(2 * 4 * self.nch_ker, 4 * self.nch_ker, kernel_size=3, stride=1, norm=self.norm, relu=0.0)
         self.dec3_1 = CNR2d(4 * self.nch_ker,     2 * self.nch_ker, kernel_size=3, stride=1, norm=self.norm, relu=0.0)
 
-        # self.unpool2 = UnPooling2d(pool=2, type='nearest')
+        self.unpool2 = UnPooling2d(pool=2, type='nearest')
         # self.unpool2 = UnPooling2d(pool=2, type='bilinear')
-        self.unpool2 = UnPooling2d(nch=2 * self.nch_ker, pool=2, type='conv')
+        # self.unpool2 = UnPooling2d(nch=2 * self.nch_ker, pool=2, type='conv')
 
         self.dec2_2 = CNR2d(2 * 2 * self.nch_ker, 2 * self.nch_ker, kernel_size=3, stride=1, norm=self.norm, relu=0.0)
         self.dec2_1 = CNR2d(2 * self.nch_ker,     1 * self.nch_ker, kernel_size=3, stride=1, norm=self.norm, relu=0.0)
 
-        # self.unpool1 = UnPooling2d(pool=2, type='nearest')
+        self.unpool1 = UnPooling2d(pool=2, type='nearest')
         # self.unpool1 = UnPooling2d(pool=2, type='bilinear')
-        self.unpool1 = UnPooling2d(nch=1 * self.nch_ker, pool=2, type='conv')
+        # self.unpool1 = UnPooling2d(nch=1 * self.nch_ker, pool=2, type='conv')
 
         self.dec1_2 = CNR2d(2 * 1 * self.nch_ker, 1 * self.nch_ker, kernel_size=3, stride=1, norm=self.norm, relu=0.0)
         self.dec1_1 = CNR2d(1 * self.nch_ker,     1 * self.nch_ker, kernel_size=3, stride=1, norm=self.norm, relu=0.0)

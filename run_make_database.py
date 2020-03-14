@@ -4,7 +4,7 @@ from PIL import Image
 import matplotlib.pyplot as plt
 
 ##
-dir_data = '../datasets/em'
+dir_data = '../../datasets/em'
 
 name_target = 'train-labels.tif'
 name_data = 'train-volume.tif'
@@ -47,7 +47,7 @@ for i in range(nframe_train):
     np.save(os.path.join(dir_save_train, "label_%03d.npy" % i), (target_))
 
 ##
-offset_nframe = offset_nframe + nframe_train
+offset_nframe = nframe_train
 
 for i in range(nframe_val):
     img_target.seek(i + offset_nframe)
@@ -60,7 +60,7 @@ for i in range(nframe_val):
     np.save(os.path.join(dir_save_val, "label_%03d.npy" % i), (target_))
 
 ##
-offset_nframe = offset_nframe + nframe_val
+offset_nframe = nframe_train + nframe_val
 
 for i in range(nframe_test):
     img_target.seek(i)

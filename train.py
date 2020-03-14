@@ -105,6 +105,7 @@ class Train:
         num_epoch = self.num_epoch
 
         lr_G = self.lr_G
+        beta1 = self.beta1
 
         batch_size = self.batch_size
         device = self.device
@@ -147,9 +148,6 @@ class Train:
         # transform_val = transforms.Compose([RandomCrop((self.ny_load, self.nx_load)), Normalize(), RandomFlip(), ToTensor()])
         transform_val = transforms.Compose([Normalize(), RandomFlip(), ToTensor()])
 
-        # transform_train = transforms.Compose([Normalize(), RandomFlip(), ToTensor()])
-        # transform_val = transforms.Compose([Normalize(), RandomFlip(), ToTensor()])
-
         transform_inv = transforms.Compose([ToNumpy(), Denormalize()])
         transform_ts2np = ToNumpy()
 
@@ -183,7 +181,7 @@ class Train:
 
         paramsG = netG.parameters()
 
-        optimG = torch.optim.Adam(paramsG, lr=lr_G)
+        optimG = torch.optim.Adam(paramsG, lr=lr_G, betas=(self.beta1, 0.999))
 
         ## load from checkpoints
         st_epoch = 0
@@ -328,10 +326,10 @@ class Train:
         ## setup dataset
         dir_chck = os.path.join(self.dir_checkpoint, self.scope, name_data)
 
-        dir_result = os.path.join(self.dir_result, self.scope, name_data)
-        dir_result_save = os.path.join(dir_result, 'images')
-        if not os.path.exists(dir_result_save):
-            os.makedirs(dir_result_save)
+        dir_result_test = os.path.join(self.dir_result, self.scope, name_data, 'test')
+        dir_result_test_save = os.path.join(dir_result_test, 'images')
+        if not os.path.exists(dir_result_test_save):
+            os.makedirs(dir_result_test_save)
 
         dir_data_test = os.path.join(self.dir_data, name_data, 'test')
 
@@ -339,7 +337,7 @@ class Train:
         transform_inv = transforms.Compose([ToNumpy(), Denormalize()])
         transform_ts2np = ToNumpy()
 
-        dataset_test = Dataset(dir_data_test, data_type=self.data_type, nch=self.nch_in, transform=transform_test)
+        dataset_test = Dataset(dir_data_test, data_type=self.data_type, transform=transform_test)
 
         loader_test = torch.utils.data.DataLoader(dataset_test, batch_size=batch_size, shuffle=False, num_workers=8)
 
@@ -394,11 +392,11 @@ class Train:
                                'output': "%04d-output.png" % name,
                                'label': "%04d-label.png" % name}
 
-                    plt.imsave(os.path.join(dir_result_save, fileset['input']), input[j].squeeze(), cmap=cmap)
-                    plt.imsave(os.path.join(dir_result_save, fileset['output']), output[j].squeeze(), cmap=cmap)
-                    plt.imsave(os.path.join(dir_result_save, fileset['label']), label[j].squeeze(), cmap=cmap)
+                    plt.imsave(os.path.join(dir_result_test_save, fileset['input']), input[j].squeeze(), cmap=cmap)
+                    plt.imsave(os.path.join(dir_result_test_save, fileset['output']), output[j].squeeze(), cmap=cmap)
+                    plt.imsave(os.path.join(dir_result_test_save, fileset['label']), label[j].squeeze(), cmap=cmap)
 
-                    append_index(dir_result, fileset)
+                    append_index(dir_result_test, fileset)
 
                 print('TEST: %d/%d: LOSS: %.6f' % (i, num_batch_test, loss_G_cls.item()))
             print('TEST: AVERAGE LOSS: %.6f' % (mean(loss_G_cls_test)))
