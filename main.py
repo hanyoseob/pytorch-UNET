@@ -32,15 +32,15 @@ elif FLAG_PLATFORM == 'laptop':
     parser.add_argument('--dir_data', default='../../datasets', dest='dir_data')
 
 parser.add_argument('--mode', default='train', choices=['train', 'test'], dest='mode')
-parser.add_argument('--train_continue', default='off', choices=['on', 'off'], dest='train_continue')
+parser.add_argument('--train_continue', default='on', choices=['on', 'off'], dest='train_continue')
 
 parser.add_argument('--scope', default='unet', dest='scope')
 parser.add_argument('--norm', type=str, default='inorm', dest='norm')
 
 parser.add_argument('--name_data', type=str, default='em', dest='name_data')
 
-parser.add_argument('--num_epoch', type=int,  default=300, dest='num_epoch')
-parser.add_argument('--batch_size', type=int, default=2, dest='batch_size')
+parser.add_argument('--num_epoch', type=int,  default=500, dest='num_epoch')
+parser.add_argument('--batch_size', type=int, default=4, dest='batch_size')
 
 parser.add_argument('--lr_G', type=float, default=1e-4, dest='lr_G')
 

@@ -7,8 +7,9 @@ import torch.nn as nn
 from torchvision import transforms
 from torch.utils.tensorboard import SummaryWriter
 import matplotlib.pyplot as plt
-from matplotlib.pyplot import cm
-from statistics import mean
+
+import pydensecrf.densecrf as dcrf
+from pydensecrf.utils import unary_from_softmax, create_pairwise_bilateral, create_pairwise_gaussian
 
 ##
 class Train:
@@ -65,38 +66,43 @@ class Train:
         if not os.path.exists(dir_chck):
             os.makedirs(dir_chck)
 
-        torch.save({'netG': netG.state_dict(),
-                    'optimG': optimG.state_dict()},
-                   '%s/model_epoch%04d.pth' % (dir_chck, epoch))
+        if self.gpu_ids:
+            torch.save({'netG': netG.module.state_dict(),
+                        'optimG': optimG.state_dict()},
+                        '%s/model_epoch%04d.pth' % (dir_chck, epoch))
+        else:
+            torch.save({'netG': netG.state_dict(),
+                        'optimG': optimG.state_dict()},
+                        '%s/model_epoch%04d.pth' % (dir_chck, epoch))
 
-    def load(self, dir_chck, netG, optimG=[], epoch=[], mode='train'):
+
+    def load(self, dir_chck, netG, optimG=None, epoch=None):
         if not os.path.exists(dir_chck):
             epoch = 0
-            if mode == 'train':
-                return netG, optimG, epoch
-
-            elif mode == 'test':
+            if optimG is None:
                 return netG, epoch
+            else:
+                return netG, optimG, epoch
 
         if not epoch:
             ckpt = os.listdir(dir_chck)
+            ckpt = [f for f in ckpt if f.startswith('model')]
             ckpt.sort()
+
             epoch = int(ckpt[-1].split('epoch')[1].split('.pth')[0])
 
-        dict_net = torch.load('%s/model_epoch%04d.pth' % (dir_chck, epoch))
+        dict_net = torch.load('%s/model_epoch%04d.pth' % (dir_chck, epoch), map_location=self.device)
 
         print('Loaded %dth network' % epoch)
 
-        if mode == 'train':
+        if optimG is None:
+            netG.load_state_dict(dict_net['netG'])
+            return netG, epoch
+        else:
             netG.load_state_dict(dict_net['netG'])
             optimG.load_state_dict(dict_net['optimG'])
-
             return netG, optimG, epoch
 
-        elif mode == 'test':
-            netG.load_state_dict(dict_net['netG'])
-
-            return netG, epoch
 
     def train(self):
         mode = self.mode
@@ -127,7 +133,6 @@ class Train:
         ## setup dataset
         dir_chck = os.path.join(self.dir_checkpoint, self.scope, name_data)
 
-
         dir_result_train = os.path.join(self.dir_result, self.scope, name_data, 'train')
         if not os.path.exists(os.path.join(dir_result_train, 'images')):
             os.makedirs(os.path.join(dir_result_train, 'images'))
@@ -136,17 +141,14 @@ class Train:
         if not os.path.exists(os.path.join(dir_result_val, 'images')):
             os.makedirs(os.path.join(dir_result_val, 'images'))
 
-
         dir_data_train = os.path.join(self.dir_data, name_data, 'train')
         dir_data_val = os.path.join(self.dir_data, name_data, 'val')
 
         dir_log_train = os.path.join(self.dir_log, self.scope, name_data, 'train')
         dir_log_val = os.path.join(self.dir_log, self.scope, name_data, 'val')
 
-
-        transform_train = transforms.Compose([RandomCrop((self.ny_load, self.nx_load)), Normalize(), RandomFlip(), ToTensor()])
-        # transform_val = transforms.Compose([RandomCrop((self.ny_load, self.nx_load)), Normalize(), RandomFlip(), ToTensor()])
-        transform_val = transforms.Compose([Normalize(), RandomFlip(), ToTensor()])
+        transform_train = transforms.Compose([RandomCrop((self.ny_load, self.nx_load)), RandomFlip(), Normalize(), ToTensor()])
+        transform_val = transforms.Compose([RandomFlip(), Normalize(), ToTensor()])
 
         transform_inv = transforms.Compose([ToNumpy(), Denormalize()])
         transform_ts2np = ToNumpy()
@@ -167,7 +169,24 @@ class Train:
         netG = UNet(nch_in, nch_out, nch_ker, norm)
         # netG = CNP(nch_in, nch_out, nch_ker, norm)
 
-        init_net(netG, init_type='normal', init_gain=0.02, gpu_ids=gpu_ids)
+        init_weights(netG, init_type='normal', init_gain=0.02)
+        netG.to(device)
+
+        paramsG = netG.parameters()
+        optimG = torch.optim.Adam(paramsG, lr=lr_G, betas=(beta1, 0.999))
+
+        ## load from checkpoints
+        st_epoch = 0
+
+        if train_continue == 'on':
+            netG, optimG, st_epoch = self.load(dir_chck, netG, optimG)
+
+        if gpu_ids:
+            netG = torch.nn.DataParallel(netG, gpu_ids)  # multi-GPUs
+            # for state in optimG.state.values():
+            #     for k, v in state.items():
+            #         if isinstance(v, torch.Tensor):
+            #             state[k] = v.cuda()
 
         ## setup loss & optimization
         # fn_L1 = nn.L1Loss().to(device)      # Regression loss: L1
@@ -178,16 +197,6 @@ class Train:
 
         fn_CLS = nn.BCEWithLogitsLoss().to(device)    # Binary-class: This loss combines a `Sigmoid` layer and the `BCELoss` in one single class.
         # fn_CLS = nn.CrossEntropyLoss().to(device)     # Multi-class: This criterion combines :func:`nn.LogSoftmax` and :func:`nn.NLLLoss` in one single class.
-
-        paramsG = netG.parameters()
-
-        optimG = torch.optim.Adam(paramsG, lr=lr_G, betas=(self.beta1, 0.999))
-
-        ## load from checkpoints
-        st_epoch = 0
-
-        if train_continue == 'on':
-            netG, optimG, st_epoch = self.load(dir_chck, netG, optimG, mode=mode)
 
         ## setup tensorboard
         writer_train = SummaryWriter(log_dir=dir_log_train)
@@ -221,7 +230,7 @@ class Train:
                 loss_G_cls_train += [loss_G_cls.item()]
 
                 print('TRAIN: EPOCH %d: BATCH %04d/%04d: CLS: %.4f'
-                      % (epoch, i, num_batch_train, mean(loss_G_cls_train)))
+                      % (epoch, i, num_batch_train, np.mean(loss_G_cls_train)))
 
                 if should(num_freq_disp):
                     ## show output
@@ -245,7 +254,7 @@ class Train:
                     plt.imsave(os.path.join(dir_result_train, 'images', fileset['label']), label[0].squeeze(), cmap=cmap)
                     plt.imsave(os.path.join(dir_result_train, 'images', fileset['output']), output[0].squeeze(), cmap=cmap)
 
-            writer_train.add_scalar('loss_G_cls', mean(loss_G_cls_train), epoch)
+            writer_train.add_scalar('loss_G_cls', np.mean(loss_G_cls_train), epoch)
 
             ## validation phase
             with torch.no_grad():
@@ -268,7 +277,7 @@ class Train:
                     loss_G_cls_val += [loss_G_cls.item()]
 
                     print('VALID: EPOCH %d: BATCH %04d/%04d: CLS: %.4f'
-                          % (epoch, i, num_batch_val, mean(loss_G_cls_val)))
+                          % (epoch, i, num_batch_val, np.mean(loss_G_cls_val)))
 
                     if should(num_freq_disp):
                         ## show output
@@ -293,7 +302,7 @@ class Train:
                         plt.imsave(os.path.join(dir_result_val, 'images', fileset['output']), output[0].squeeze(), cmap=cmap)
 
 
-                writer_val.add_scalar('loss_G_cls', mean(loss_G_cls_val), epoch)
+                writer_val.add_scalar('loss_G_cls', np.mean(loss_G_cls_val), epoch)
 
             # update schduler
             # schedG.step()
@@ -349,18 +358,19 @@ class Train:
         netG = UNet(nch_in, nch_out, nch_ker, norm)
         # netG = CNP(nch_in, nch_out, nch_ker, norm)
 
-        init_net(netG, init_type='normal', init_gain=0.02, gpu_ids=gpu_ids)
+        init_weights(netG, init_type='normal', init_gain=0.02)
+        netG.to(device)
+
+        st_epoch = 0
+        netG, st_epoch = self.load(dir_chck, netG)
+
+        if gpu_ids:
+            netG = torch.nn.DataParallel(netG, gpu_ids)  # multi-GPUs
 
         ## setup loss & optimization
         # fn_L1 = nn.L1Loss().to(device)  # L1
         # fn_CLS = nn.BCELoss().to(device)
         fn_CLS = nn.BCEWithLogitsLoss().to(device)
-
-
-        ## load from checkpoints
-        st_epoch = 0
-
-        netG, st_epoch = self.load(dir_chck, netG, mode=mode)
 
         ## test phase
         with torch.no_grad():
@@ -382,24 +392,62 @@ class Train:
                 input = transform_inv(input)
                 label = transform_ts2np(label)
                 output = transform_ts2np(torch.sigmoid(output))
-                output = 1.0 * (output > 0.5)
+
 
                 for j in range(label.shape[0]):
                     name = batch_size * (i - 1) + j
 
                     fileset = {'name': name,
                                'input': "%04d-input.png" % name,
-                               'output': "%04d-output.png" % name,
+                               'output_th': "%04d-output_th.png" % name,
+                               'output_crf': "%04d-output_crf.png" % name,
                                'label': "%04d-label.png" % name}
 
-                    plt.imsave(os.path.join(dir_result_test_save, fileset['input']), input[j].squeeze(), cmap=cmap)
-                    plt.imsave(os.path.join(dir_result_test_save, fileset['output']), output[j].squeeze(), cmap=cmap)
-                    plt.imsave(os.path.join(dir_result_test_save, fileset['label']), label[j].squeeze(), cmap=cmap)
+                    input_ = input[j]
+                    output_ = output[j]
+                    label_ = label[j]
+
+                    output_th = 1.0 * (output_ > 0.5)
+
+                    ##
+                    sdims = 1
+                    schan = 1
+                    compat = 10
+                    iter = 10
+
+                    output_crf = output_.transpose((2, 0, 1))
+                    output_crf = np.concatenate((1 - output_crf, output_crf), axis=0)
+
+                    U = unary_from_softmax(output_crf)
+
+                    d = dcrf.DenseCRF2D(output_crf.shape[1], output_crf.shape[2], output_crf.shape[0])
+                    d.setUnaryEnergy(U)
+
+
+                    pairwise_energy = create_pairwise_bilateral(sdims=(sdims, sdims), schan=(schan,), img=input_, chdim=2)
+                    d.addPairwiseEnergy(pairwise_energy, compat=compat)
+
+                    pairwise_energy = create_pairwise_gaussian(sdims=(sdims, sdims), shape=(input_.shape[:2]))
+                    d.addPairwiseEnergy(pairwise_energy, compat=compat)
+
+                    # Run inference for 10 iterations
+                    Q_unary = d.inference(iter)
+
+                    # The Q is now the approximate posterior, we can get a MAP estimate using argmax.
+                    map_soln_unary = np.argmax(Q_unary, axis=0)
+
+                    # Unfortunately, the DenseCRF flattens everything, so get it back into picture form.
+                    output_crf = map_soln_unary.reshape((output_crf.shape[1], output_crf.shape[2]))
+
+                    plt.imsave(os.path.join(dir_result_test_save, fileset['input']), input_.squeeze(), cmap=cmap)
+                    plt.imsave(os.path.join(dir_result_test_save, fileset['output_th']), output_th.squeeze(), cmap=cmap)
+                    plt.imsave(os.path.join(dir_result_test_save, fileset['output_crf']), output_crf.squeeze(), cmap=cmap)
+                    plt.imsave(os.path.join(dir_result_test_save, fileset['label']), label_.squeeze(), cmap=cmap)
 
                     append_index(dir_result_test, fileset)
 
                 print('TEST: %d/%d: LOSS: %.6f' % (i, num_batch_test, loss_G_cls.item()))
-            print('TEST: AVERAGE LOSS: %.6f' % (mean(loss_G_cls_test)))
+            print('TEST: AVERAGE LOSS: %.6f' % (np.mean(loss_G_cls_test)))
 
 
 def set_requires_grad(nets, requires_grad=False):

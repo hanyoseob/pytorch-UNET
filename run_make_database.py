@@ -16,9 +16,9 @@ ny, nx = img_target.size
 nframe = img_target.n_frames
 
 ##
-nframe_train = 20   # The number of training set
-nframe_val = 5      # The number of validation set
-nframe_test = 5     # The number of test set
+nframe_train = 24   # The number of training set
+nframe_val = 3      # The number of validation set
+nframe_test = 3     # The number of test set
 
 dir_save_train = os.path.join(dir_data, 'train')
 dir_save_val = os.path.join(dir_data, 'val')
@@ -34,11 +34,15 @@ if not os.path.exists(dir_save_test):
     os.makedirs(dir_save_test)
 
 ##
+id_frame = np.arange(nframe)
+np.random.shuffle(id_frame)
+
+##
 offset_nframe = 0
 
 for i in range(nframe_train):
-    img_target.seek(i + offset_nframe)
-    img_data.seek(i + offset_nframe)
+    img_target.seek(id_frame[i + offset_nframe])
+    img_data.seek(id_frame[i + offset_nframe])
 
     target_ = np.asarray(img_target)
     data_ = np.asarray(img_data)
@@ -50,8 +54,8 @@ for i in range(nframe_train):
 offset_nframe = nframe_train
 
 for i in range(nframe_val):
-    img_target.seek(i + offset_nframe)
-    img_data.seek(i + offset_nframe)
+    img_target.seek(id_frame[i + offset_nframe])
+    img_data.seek(id_frame[i + offset_nframe])
 
     target_ = np.asarray(img_target)
     data_ = np.asarray(img_data)
@@ -63,8 +67,8 @@ for i in range(nframe_val):
 offset_nframe = nframe_train + nframe_val
 
 for i in range(nframe_test):
-    img_target.seek(i)
-    img_data.seek(i)
+    img_target.seek(id_frame[i + offset_nframe])
+    img_data.seek(id_frame[i + offset_nframe])
 
     target_ = np.asarray(img_target)
     data_ = np.asarray(img_data)
