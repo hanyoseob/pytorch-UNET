@@ -439,6 +439,7 @@ class Train:
                     # Unfortunately, the DenseCRF flattens everything, so get it back into picture form.
                     output_crf = map_soln_unary.reshape((output_crf.shape[1], output_crf.shape[2]))
 
+                    ##
                     plt.imsave(os.path.join(dir_result_test_save, fileset['input']), input_.squeeze(), cmap=cmap)
                     plt.imsave(os.path.join(dir_result_test_save, fileset['output_th']), output_th.squeeze(), cmap=cmap)
                     plt.imsave(os.path.join(dir_result_test_save, fileset['output_crf']), output_crf.squeeze(), cmap=cmap)

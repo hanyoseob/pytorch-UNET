@@ -218,6 +218,39 @@ class UnPooling2d(nn.Module):
         return self.unpooling(x)
 
 
+class PixelShuffle(nn.Module):
+    def __init__(self, shuffle=2):
+        super().__init__()
+        self.shuffle = shuffle
+
+    def forward(self, x):
+        r = self.shuffle
+
+        [B, C, H, W] = list(x.shape)
+        x = x.reshape(B, C, H // r, r, W // r, r)
+        # x = x.transpose(0, 1, 3, 5, 2, 4)
+        x = x.permute(0, 1, 3, 5, 2, 4)
+        x = x.reshape(B, C * (r ** 2), H // r, W // r)
+
+        return x
+
+
+class PixelUnshuffle(nn.Module):
+    def __init__(self, shuffle=2):
+        super().__init__()
+        self.shuffle = shuffle
+
+    def forward(self, x):
+        r = self.shuffle
+
+        [B, C, H, W] = list(x.shape)
+        x = x.reshape(B, C // (r ** 2), r, r, H, W)
+        # x = x.transpose(0, 1, 4, 2, 5, 3)
+        x = x.permute(0, 1, 4, 2, 5, 3)
+        x = x.reshape(B, C // (r ** 2), H * r, W * r)
+
+        return x
+
 class Concat(nn.Module):
     def __init__(self):
         super().__init__()
